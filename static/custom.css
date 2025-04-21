@@ -1,0 +1,16 @@
+:root {
+    --sans-serif-font: 'LXGW WenKai Screen', Helvetica, Arial, sans-serif !important;
+    --serif-font: 'LXGW WenKai Screen', 'Source Serif', 'Georgia', serif !important;
+    --code-font: 'LXGW WenKai Mono Screen', 'Cascadia Code' !important;
+}
+
+/* Homepage */
+#banner-home-img {
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Markdown image */
+p img {
+    display: inline-block !important;
+}
