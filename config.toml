@@ -301,7 +301,7 @@ copyright_translations.en = "$TITLE © $CURRENT_YEAR $AUTHOR $SEPARATOR Unless o
 allowed_domains = [
     { directive = "font-src", domains = ["'self'", "https://*", "data:"] },
     { directive = "img-src", domains = ["'self'", "https://*", "data:"] },
-    { directive = "media-src", domains = ["'self'"] },
+    { directive = "media-src", domains = ["'self'", "https://cdn.jsdelivr.net/"] },
     { directive = "script-src", domains = ["'self'"] },
     { directive = "style-src", domains = ["'self'", "https://*"] },
     { directive = "frame-src", domains = ["player.vimeo.com", "https://www.youtube-nocookie.com"] },
@@ -353,7 +353,7 @@ enable_reactions = 1
 comment_box_above_comments = true
 light_theme = "noborder_light"
 dark_theme = "noborder_dark"
-lang = ""  # Leave blank to match the page's language.
+lang = "en"
 lazy_loading = true
 
 # utterances support for comments. https://utteranc.es
