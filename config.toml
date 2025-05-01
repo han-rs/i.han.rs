@@ -279,7 +279,6 @@ footer_menu = [
     {url = "about", name = "About", trailing_slash = true},
     # {url = "privacy", name = "privacy", trailing_slash = true},
     {url = "sitemap.xml", name = "Sitemap", trailing_slash = false},
-    {url = "https://linux.do/u/hantong", name = "Linux.do", trailing_slash = false},
 ]
 
 # Enable a copyright notice for the footer, shown between socials and the "Powered by" text.
