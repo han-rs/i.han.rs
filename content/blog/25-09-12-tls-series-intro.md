@@ -1,7 +1,7 @@
 +++
 title = "从零开始了解 TLS 1.3 系列笔记（一）—— 导语"
 date = "2025-09-12"
-# updated = ""
+updated = "2025-09-13"
 # description = ""
 
 [taxonomies]
@@ -34,10 +34,12 @@ Transport Layer Security (TLS, *传输层安全*) 可谓现代互联网安全的
 
 ## 参考资料及致谢
 
-笔者在学习过程中参考了大量资料, 在此一并列出, 以飨读者:
+笔者在学习过程中参考了大量资料, 在此部分列出, 以飨读者:
 
-- [halfrost 的系列文章](https://halfrost.com/tag/https/)
-- [超超哥哥的系列文章](https://chaochaogege.com)
+- [`冰霜之地`](https://halfrost.com/tag/https/)的系列文章
+- [`超超哥哥`](https://chaochaogege.com)的系列文章
+- [`於清樂`](https://thiscute.world/)的翻译文章
+  - [Practical Cryptography for Developers Book](https://github.com/nakov/Practical-Cryptography-for-Developers-Book)
 - ...
 
 [rustls]: https://github.com/rustls/rustls
