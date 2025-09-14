@@ -1,11 +1,11 @@
 +++
 title = "从零开始了解 TLS 1.3 系列笔记（三）—— 实用密码学之「哈希函数 (Hash Functions)」"
 date = "2025-09-14"
-# updated = ""
+updated = "2025-09-14"
 description = "本文大部分参考自 Practical Cryptography for Developers Book"
 
 [taxonomies]
-tags = ["TLS", "Cryptography", "Hash"]
+tags = ["TLS", "Cryptography"]
 
 [extra]
 toc = true
