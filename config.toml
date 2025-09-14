@@ -13,6 +13,7 @@ taxonomies = [{name = "tags", feed = true}]
 [languages.en]
 build_search_index = true
 title = "i.han.rs"
+taxonomies = [{name = "tags", feed = true}]
 
 [search]
 # Whether to include the title of the page/section in the index.
@@ -287,8 +288,8 @@ footer_menu = [
 # $AUTHOR will be replaced by the `author` variable.
 # $SEPARATOR will be replaced by the `separator` variable.
 # Markdown is supported (links, emphasis, etc).
-copyright = "$TITLE © $CURRENT_YEAR $AUTHOR $SEPARATOR 无特别说明, 所有文章按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) 授权."
-copyright_translations.en = "$TITLE © $CURRENT_YEAR $AUTHOR $SEPARATOR Unless otherwise noted, the content in this website is available under the [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license."
+copyright = "$TITLE © $CURRENT_YEAR $AUTHOR<br>无特别说明, 所有文章按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) 授权."
+copyright_translations.en = "$TITLE © $CURRENT_YEAR $AUTHOR<br>Unless otherwise noted, the content in this website is available under the [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license."
 
 # Custom security headers. What urls should your website be able to connect to?
 # You need to specify the CSP and the URLs associated with the directive.

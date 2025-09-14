@@ -14,3 +14,13 @@
 p img {
     display: inline-block !important;
 }
+
+/* Ident */
+section.e-content p {
+    text-indent: 2em;
+}
+
+/* Title should be bold */
+section h1, section h2, section h3, section h4, section h5, section h6 {
+    font-weight: bold;
+}
