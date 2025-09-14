@@ -192,11 +192,11 @@ quick_navigation_buttons = true
 
 # Date format used when listing posts (main page, /blog section, tag posts list…)
 # Default is "6th July 2049" in English and "%d %B %Y" in other languages.
-# long_date_format = "%d %B %Y"
+long_date_format = "%Y %B %d"
 
 # Date format used for blog posts.
 # Default is "6th July 2049" in English and "%-d %B %Y" in other languages.
-short_date_format = ""
+short_date_format = "%Y %B %-d"
 
 # Custom separator used in title tag and posts metadata (between date, time to read, and tags).
 separator = "•"
