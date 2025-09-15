@@ -2,7 +2,7 @@
 title = "从零开始了解 TLS 1.3 系列笔记（二）—— 实用密码学之「引言」"
 date = "2025-09-13"
 # updated = ""
-description = "本文大部分参考自 Practical Cryptography for Developers Book"
+# description = ""
 
 [taxonomies]
 tags = ["TLS", "Cryptography"]

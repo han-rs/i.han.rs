@@ -2,7 +2,7 @@
 title = "从零开始了解 TLS 1.3 系列笔记 (四) —— 实用密码学之「HMAC、HKDF 与安全随机数」"
 date = "2025-09-15"
 updated = "2025-09-15"
-description = "本文大部分参考自 Practical Cryptography for Developers Book"
+description = "本文介绍了 MAC (消息认证码)、HMAC (哈希消息认证码) 和 KDF (密钥派生函数), 着重讲解了 HMAC 和 HKDF 的工作原理及其应用场景."
 
 [taxonomies]
 tags = ["TLS", "Cryptography"]
