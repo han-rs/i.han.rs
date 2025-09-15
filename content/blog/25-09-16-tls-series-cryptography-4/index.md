@@ -1,5 +1,5 @@
 +++
-title = "从零开始了解 TLS 1.3 系列笔记 (五) —— 实用密码学之「密钥交换 (Key Exchange), Diffie–Hellman (DH) 与后量子加密 (PQC)」"
+title = "从零开始了解 TLS 1.3 系列笔记 (五) —— 实用密码学之「密钥交换, Diffie–Hellman 与后量子加密」"
 date = "2025-09-16"
 # updated = ""
 description = "本文介绍了密钥交换的基本概念, 着重介绍了 TLS 1.3 中使用的 (EC)DH 密钥交换协议, 以及后量子加密参与的混合密钥交换方案."
