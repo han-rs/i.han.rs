@@ -144,9 +144,9 @@ DHE / ECDHE 协议的流程与前面介绍的 DH / ECDH 类似, 但每次通讯�
 
 如其名, 密钥封装机制核心就是对密文的封装 (encapsulate) 与解封装 (decapsulate), 示意图如下:
 
-<p align="center">
+<div align="center">
   <img src="./FIPS.206-MLKEM-KE.png" alt="KEM" style="max-width: 50%;">
-</p>
+</div>
 
 主要流程为:
 
@@ -166,9 +166,9 @@ DHE / ECDHE 协议的流程与前面介绍的 DH / ECDH 类似, 但每次通讯�
 
 感谢 [@jschauma 总结的一图流](https://www.netmeister.org/blog/tls-hybrid-kex.html),  (图示为 X25519Kyber768, 但其他的基于 ML-KEM 的混合密钥交换方案也是类似的流程):
 
-<p align="center">
+<div align="center">
   <img src="./kyber-kex.png" alt="TLS 1.3 Hybrid Key Exchange" style="max-width: 100%;">
-</p>
+</div>
 
 简单地来说, 就是在原 (EC)DH 的基础上, 额外增加了 KEM 的公钥交换与密文交换过程: 客户端将 PQC 公钥拼接在客户端向服务端共享的 (EC)DH 公钥后, 服务端将封装密文拼接在服务端向客户端共享的 (EC)DH 公钥后, 双方最终将通过 (EC)DH 得到的共享密钥与 KEM 拿到的或解封装出来的共享密钥拼接起来, 就得到了最终的共享密钥, 是不是非常简单粗暴呢.
 
@@ -176,9 +176,9 @@ DHE / ECDHE 协议的流程与前面介绍的 DH / ECDH 类似, 但每次通讯�
 >
 > 后量子算法的引入, 直接导致 ClientHello 消息体积暴增, 如 X25519MLKEM768, 会额外多出 32 字节的用于回落的 X25519 公钥, 以及 1184 字节的 ML-KEM-768 的公钥, 加上原有的 500 字节左右, 大概是 1700 字节左右, 已经超过了 IPv4 TCP 最大 MSS (1500 - 20 - 20 = 1460 Bytes) 导致需要分包, 一旦丢包, 握手延迟蹭蹭涨.
 >
-> <p align="center">
+> <div align="center">
 >  <img src="./wireshark-large-client-hello.png" alt="wireshark-large-client-hello" style="max-width: 60%;">
-> </p>
+> </div>
 >
 > 即便使用纯 PQC, 也只是堪堪减少 32 Bytes, 于事无补.
 
