@@ -73,9 +73,7 @@ MAC 码主要用于验证消息未被篡改. 如当通信双方持有相同的�
 
 > 背景知识
 >
-> 可能大家并不熟悉 AE 这个术语, 但 AEAD (Authenticated Encryption with Associated Data, 带关联数据的认证加密) 应该就是熟面孔了. AEAD 是 AE 的一种扩展, 允许在认证加密过程中包含未加密的关联数据 (Associated Data, AD), 如路由信息等需要中间盒处理的信息. 例如, TLS 1.3 中使用的 AES-{128|256}-GCM 和 ChaCha20-Poly1305 都是 AEAD 加密方案.
->
-> AEAD 的具体做法我们不需要了解, 此处按下不表, 我们了解如何使用即可.
+> 可能大家并不熟悉 AE 这个术语, 但 AEAD (Authenticated Encryption with Associated Data, 带关联数据的认证加密) 应该就是熟面孔了. AEAD 是 AE 的一种扩展, 允许在认证加密过程中包含未加密的关联数据 (Associated Data, AD), 如路由信息等需要中间盒处理的信息. 例如, TLS 1.3 中使用的 AES-{128|256}-GCM 和 ChaCha20-Poly1305 都是 AEAD 加密方案, 我们将在介绍对称加密方案时再提到.
 
 由此, 我们同时验证了通信双方持有相同的共享密钥 (即认证, AE 代表 Authenticated Encryption, 经过认证的加密), 以及消息未被篡改 (完整性).
 
@@ -168,7 +166,7 @@ HMAC-Hash 表示使用哈希函数 "Hash" 的 HMAC 函数. HMAC 始终有两个�
 
 当消息由多个元素组成时, 我们在第二个参数中将其串接 (表示为 |); 例如, HMAC(K, elem1 | elem2 | elem3).
 
-本文档中的关键词 "必须" ("MUST" / "SHALL" / "REQUIRED")、"绝不能" ("MUST NOT" / "SHALL NOT"), "推荐" ("SHOULD" / "RECOMMENDED")、"不推荐" ("SHOULD NOT" / "NOT RECOMMENDED"), "可以/可能/可选" ("MAY" / "OPTIONAL") 按照 BCP 14, RFC 2119 中的描述进行解释
+本文档中的关键词 "必须" ("MUST" / "SHALL" / "REQUIRED")、"绝不能" ("MUST NOT" / "SHALL NOT"), "推荐" ("SHOULD" / "RECOMMENDED")、"不推荐" ("SHOULD NOT" / "NOT RECOMMENDED"), "可以/可能/可选" ("MAY" / "OPTIONAL") 按照 BCP 14, RFC 2119 中的描述进行解释.
 
 #### 2.2. 第一步: 提取 (extract)
 
