@@ -236,6 +236,7 @@ favicon = "/favicon.ico"
 
 menu = [
     { name = "blog", url = "blog", trailing_slash = true },
+    { name = "translation", url = "translation", trailing_slash = true },
     { name = "archive", url = "archive", trailing_slash = true },
     { name = "tags", url = "tags", trailing_slash = true },
     { name = "resources", url = "resources", trailing_slash = true },
