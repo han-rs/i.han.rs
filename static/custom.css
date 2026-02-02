@@ -16,7 +16,7 @@ p img {
 }
 
 /* Ident */
-section.e-content p {
+section.e-content p:not(section.footnotes p, li p) {
     text-indent: 2em;
 }
 
