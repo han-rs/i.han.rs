@@ -32,25 +32,17 @@ toc = true
 
 ### GPG
 
-GPG ([GnuPG], GNU Privacy Guard) 是一款自由、开源软件 (FOSS), 通过对公钥密码学原语的封装, 实现了 [OpenPGP] 标准[^1]. 区别于 TLS 依赖 PKI 这种中心化的信任体系, OpenPGP 的信任体系是点对点的, 即需要手动信任对等方的公钥.
+GPG ([GnuPG], GNU Privacy Guard) 是一款自由和开源软件 (FOSS), 通过对各类密码学原语的封装, 遵照 [OpenPGP] 标准, 实现了加密 (**E**crypt)、签名 (**S**ign) 和认证 (**A**uthenticating) 功能, 以及密钥管理功能 (**C**ertify). PGP 早期为一具备类似功能的闭源专有程序[^1], 虽然如今称呼 PGP 等价于称呼 OpenPGP 了.
 
-[^1]: 有 OpenPGP, 自然就有闭源专有的 PGP, 虽然后者早已扫进历史垃圾堆里了. 参见 [WikiPedia: GNU Privacy Guard](https://en.wikipedia.org/wiki/GNU_Privacy_Guard).
+[^1]: [WikiPedia: GNU Privacy Guard](https://en.wikipedia.org/wiki/GNU_Privacy_Guard).
 
-通常, 术语 GnuPG / GPG / GNU Privacy Guard, OpenPGP 和 PGP 可以互换其称呼. 技术上说, OpenPGP 是一种加密标准, GNU Privacy Guard (GnuPG, GPG) 是实现该标准的程序.
-
-GPG 提供了密钥管理, 和数据签名(验签)、数据加(解)密的功能:
-
-1. 加密 (**E**crypt)
-1. 签名 (**S**ign)
-1. 认证 (**A**uthenticating)
-
-相对应地, GPG 生成并管理以下几种公私钥对:
+GPG 生成并管理以下几种公私钥对:
 
 1. 主密钥对
 
-   包含主私钥 (sec) 和主公钥 (pub), 主要用以签发 (**C**ertify) 子密钥.
+   包含主私钥 (sec) 和主公钥 (pub).
 
-   主密钥对一般要求离线保存, 仅在需要使用时加载:
+   虽然可以让主密钥对提供上述全部功能, 但一般不推荐那么做. 相反, 我们推荐仅授予主密钥对以密钥管理功能, 完成密钥准备工作后即离线保存主私钥, 仅在需要时加载, 包括但不限于:
 
    1. 添加或吊销子密钥;
    1. 添加、更改或吊销密钥关联身份 (UID);
@@ -63,25 +55,27 @@ GPG 提供了密钥管理, 和数据签名(验签)、数据加(解)密的功能:
 
    包含子私钥 (ssb) 和子公钥 (sub), 按前述用途可细分为 ssb S / A / E, sub S / A / E.
 
-以下称主/子密钥时, 均指公钥和私钥的组合, 即密钥对.
+   我们推荐为不同用途分别生成子密钥对.
+
+以下称 "主/子密钥" 时, 均指公钥和私钥的组合, 即密钥对.
 
 ## 安装 GPG
 
-不再赘述, 现代版本 Debian 系统一般默认安装, Windows 系统下还可以安装 [Kleopatra], 会捎带着安装命令行版本的 GPG. 下面的示例均使用命令行操作.
+不再赘述, 现代 Linux 发行版一般默认安装, Windows 系统下可以安装 [Kleopatra], 会捎带着安装命令行版本的 GPG. 下面的示例均使用命令行操作.
 
 ## 准备 GPG 密钥
 
 ### 生成主密钥
 
-执行 `gpg --full-gen-key --expert` 进行交互式生成:
+执行 `gpg --full-gen-key --expert` 进行交互式生成.
 
 #### 选择密钥类型
 
-出于性能等原因, 我们选择 ECC 密钥类型, 除非需要兼容老设备等才选择 RSA. 当然, ECC 和 RSA 一样并不具备后量子安全性, 只不过后量子安全的算法目前尚未成熟.
+出于性能原因, 我们推荐选择 ECC 密钥类型, 除非需要兼容老设备等才选择 RSA. 虽然, ECC 和 RSA 一样并不具备后量子安全性, 但后量子安全的算法目前尚未成熟, OpenPGP 尚未跟进相关进展.
 
 由于我们希望主密钥专用于管理子密钥, 即执行 Certify 的功能, 我们选择 "(11) ECC (set your own capabilities)", 然后手动设置主密钥功能 (初始时自带 `Sign` 和 `Certify` 的功能, 输入 `S` 关闭签名功能即可, 然后按 `Q` 保存).
 
-```plaintext
+```shellsession
 Please select what kind of key you want:
    (1) RSA and RSA
    (2) DSA and Elgamal
@@ -117,9 +111,11 @@ Your selection? Q
 
 #### 选择 ECC 曲线
 
-出于兼容性原因, 我们选择 "(1) Curve 25519" 而不是 "(2) Curve 448" 或 "(9) secp256k1"; 出于安全性原因, 不推荐 NIST 曲线 (即 secp256r1 等曲线).
+出于兼容性原因, 我们选择 Curve25519 而不是 Curve448; 出于安全考虑[^2], 不推荐 NIST 系列曲线、Brainpool 系列曲线或 secp256k1.
 
-```plaintext
+[^2]: 参阅 <https://safecurves.cr.yp.to/>.
+
+```shellsession
 Please select which elliptic curve you want:
    (1) Curve 25519 *default*
    (2) Curve 448
@@ -135,9 +131,9 @@ Your selection? 1
 
 #### 配置有效期
 
-出于安全原因, 并不建议配置密钥永不过期. 此处我们设置为 4 年.
+出于安全考虑, 不建议配置密钥永不过期. 此处我们设置为 4 年.
 
-```plaintext
+```shellsession
 Please specify how long the key should be valid.
          0 = key does not expire
       <n>  = key expires in n days
@@ -151,9 +147,9 @@ Is this correct? (y/N) y
 
 #### 配置 UID
 
-用户 ID 用于将密钥和真人关联, 同一个主密钥下可以有多个 UID 适应多个身份, 但我们不建议.
+用户 ID 用于将密钥和真人关联, 同一个主密钥下可以有多个 UID 适应多个身份.
 
-```plaintext
+```shellsession
 GnuPG needs to construct a user ID to identify your key.
 
 Real name: Hantong Chen
@@ -171,26 +167,26 @@ Change (N)ame, (C)omment, (E)mail or (O)kay/(Q)uit? O
 
 输入密码, 按 Tab 移动到下一项, 再次输入密码, 按 Tab 移动到 `<OK>` 确认.
 
-```plaintext
-┌───────────────────────────────┐
-│ Please enter the passphrase to                               │
-│ protect your new key                                         │
-│                                                              │
-│ Passphrases match.                                           │
-│                                                              │
-│ Passphrase: _______________________________________________  │
-│                                                              │
-│ Repeat: ___________________________________________________  │
-│ ┌────────────────────────────┐ │
-│ │                                                        │ │
-│ └────────────────────────────┘ │
-│        <OK>                                   <Cancel>       │
-└───────────────────────────────┘
+```shellsession
+┌─────────────────────────────────────────────────────────────┐
+│ Please enter the passphrase to                              │
+│ protect your new key                                        │
+│                                                             │
+│ Passphrases match.                                          │
+│                                                             │
+│ Passphrase: _______________________________________________ │
+│                                                             │
+│ Repeat: ___________________________________________________ │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │                                                         │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│        <OK>                                   <Cancel>      │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 注意不要超时, 输入完毕后等待完成即可:
 
-```plaintext
+```shellsession
 We need to generate a lot of random bytes. It is a good idea to perform
 some other action (type on the keyboard, move the mouse, utilize the
 disks) during the prime generation; this gives the random number
@@ -205,7 +201,7 @@ generator a better chance to gain enough entropy.
 
 现在, 我们的主密钥就已经生成完毕了:
 
-```plaintext
+```shellsession
 gpg: revocation certificate stored as '/home/hantong/.gnupg/openpgp-revocs.d/6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.rev'
 public and secret key created and signed.
 
@@ -214,11 +210,11 @@ pub   ed25519 2026-02-02 [C] [expires: 2030-02-01]
 uid                      Hantong Chen (2026) <public-service@7rs.net>
 ```
 
-请务必牢记主密钥的密码, 后面还会用到.
+请务必牢记密码, 后面所有用到私钥的地方都会要求输入密码.
 
 可以使用 `gpg --list-keys --keyid-format long` 和 `gpg --list-secret-keys --keyid-format long` 列出所有公钥和私钥:
 
-```sh
+```shellsession
 > gpg --list-keys --keyid-format long
 # 略去部分输出
 pub   ed25519/F95DD10B4BFF68A2 2026-02-02 [C] [expires: 2030-02-01]
@@ -226,7 +222,7 @@ pub   ed25519/F95DD10B4BFF68A2 2026-02-02 [C] [expires: 2030-02-01]
 uid                 [ultimate] Hantong Chen (2026) <public-service@7rs.net>
 ```
 
-```sh
+```shellsession
 > gpg --list-secret-keys --keyid-format long
 # 略去部分输出
 sec   ed25519/F95DD10B4BFF68A2 2026-02-02 [C] [expires: 2030-02-01]
@@ -249,9 +245,9 @@ PKI 体系有证书信任链的存在, GPG 的子密钥机制 (subkey) 承担了
 
 我们建议并在前述步骤中配置主密钥仅承担签发的功能, 接下来需要添加子密钥分别承担签名/认证/加密的功能.
 
-使用 `gpg --expert --edit-key <ID>` 进入编辑模式:
+使用 `gpg --expert --edit-key <key-id>` 进入编辑模式, 下面是示例操作过程:
 
-```sh
+```shellsession
 > gpg --expert --edit-key 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2
 gpg (GnuPG) 2.4.7; Copyright (C) 2024 g10 Code GmbH
 This is free software: you are free to change and redistribute it.
@@ -447,7 +443,7 @@ gpg> save
 
 1. `addkey`: 添加子密钥
 
-   ```plaintext
+   ```shellsession
    gpg> addkey
    Please select what kind of key you want:
       (3) DSA (sign only)
@@ -470,7 +466,7 @@ gpg> save
 
    特别地, 认证 (`A`) 用途选择 `ECC (set your own capabilities)` 时, 类似配置主密钥的密钥用途那样, 一开始会让我们手动选择密钥用途:
 
-   ```plaintext
+   ```shellsession
    Possible actions for this ECC key: Sign Authenticate
    Current allowed actions: Sign
 
@@ -482,7 +478,7 @@ gpg> save
    ```
 
    这里默认情况下是签名用途的, 我们输入 `A` 添加认证用途, 再输入 `S` 去掉签名用途, 最后输入 `Q` 完成用途设置.
-1. `key <ID>`: 选中密钥.
+1. `key <key-id>`: 选中 `<key-id>` 指示的密钥.
 
    选中时, 密钥前会带有 `*` 号; 再次输入相同 ID 即为取消选中.
 1. `delkey`: 删除子密钥
@@ -497,9 +493,9 @@ gpg> save
 
 ### 导出主密钥吊销证书
 
-前面生成主密钥时, 还生成了一个吊销证书, 用于在主密钥丢失时吊销主密钥, 避免他人冒用:
+前面生成主密钥时, 还生成了一个吊销证书:
 
-```plaintext
+```shellsession
 gpg: revocation certificate stored as '/home/hantong/.gnupg/openpgp-revocs.d/6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.rev'
 ```
 
@@ -507,41 +503,47 @@ gpg: revocation certificate stored as '/home/hantong/.gnupg/openpgp-revocs.d/6D5
 
 ### 导出公钥
 
-```sh
-gpg --output 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.pub --armor --export 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2
+执行 `gpg --output <pub-key-file> --armor --export <key-id>` 导出公钥, 例如:
+
+```shellsession
+> gpg --output 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.pub --armor --export 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2
 ```
 
-导出的公钥即保存于当前文件夹的 `6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.pub` 文件中.
+此即将 `6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2` 指示的 GPG 密钥的公钥以 ASCII 装甲格式 (`--armor`, 或者说 PEM 格式, 人类可读) 导出于当前文件夹的 `6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.pub` 文件中.
 
 GPG 导出的公钥**包含主公钥和全部的子公钥**, 以及有效期、子密钥吊销信息、UID 等必要信息, 并使用主私钥签名防止被篡改.
 
 ### 导出私钥
 
-导出主私钥:
+执行 `gpg --output <key-file> --armor --export-secret-keys <key-id>!` 导出主私钥, 例如:
 
-```sh
-gpg --output 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.primary.key --armor --export-secret-keys 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2!
+```shellsession
+> gpg --output 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.primary.key --armor --export-secret-keys 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2!
 ```
 
-导出全部的子私钥:
+此即将 `6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2` 指示的 GPG 密钥的**主私钥**以 ASCII 装甲格式导出于当前文件夹的 `6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.primary.key` 文件中. 注意, 这里的 `!` 是必须的.
 
-```sh
-gpg --output 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.sub.key --armor --export-secret-subkeys 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2
+执行 `gpg --output <key-file> --armor --export-secret-subkeys <key-id>` 导出子私钥, 例如:
+
+```shellsession
+> gpg --output 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.sub.key --armor --export-secret-subkeys 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2
 ```
 
-随后离线保存这两个文件, 尤其是主私钥.
+此即将 `6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2` 指示的 GPG 密钥的**全部子私钥**以 ASCII 装甲格式导出于当前文件夹的 `6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2.sub.key` 文件中.
+
+随后离线保存主私钥, 以及备份子私钥, 以转移至其他机器上使用.
 
 ### 删除本机密钥
 
-在导出并离线备份私钥后, 我们执行交互式删除:
+在导出密钥后, 我们执行 `gpg --delete-secret-keys <key-id>` 执行交互式删除私钥, 如:
 
-```sh
-gpg --delete-secret-keys 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2
+```shellsession
+> gpg --delete-secret-keys 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2
 ```
 
-如果需要在当前机器上使用子密钥, 则只删除主私钥, 提示删除子私钥时取消即可, 操作完成后如果你尝试列出私钥, 会发现主私钥已经不见了, 仅剩子私钥:
+如果需要在当前机器上使用子密钥, 则只需要删除主私钥, 提示删除子私钥时取消即可. 操作完成后如果你尝试列出私钥, 会发现主私钥已经被移除了 (提示 `sec#`), 仅剩子私钥, 如:
 
-```sh
+```shellsession
 > gpg --list-secret-keys --keyid-format long
 # 略去部分输出
 sec#  ed25519/F95DD10B4BFF68A2 2026-02-02 [C] [expires: 2030-02-01]
@@ -552,7 +554,11 @@ ssb   ed25519/11E7B3A29E772EB3 2026-02-02 [A] [expires: 2030-02-01]
 ssb   cv25519/AE4E4336187491D9 2026-02-02 [E] [expires: 2030-02-01]
 ```
 
-如果打算在当前机器上彻底删除, 则一路确认完成私钥删除后再执行 `gpg --delete-keys 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2` 删除公钥.
+如果打算在当前机器上彻底删除, 则一路确认删除主私钥和子私钥后, 执行 `gpg --delete-keys <key-id>` 删除公钥, 如:
+
+```shellsession
+> gpg --delete-keys 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2
+```
 
 ### 小结
 
@@ -566,8 +572,8 @@ ssb   cv25519/AE4E4336187491D9 2026-02-02 [E] [expires: 2030-02-01]
 
 上传公钥到公钥服务器的命令如下:
 
-```sh
-gpg --keyserver hkps://keys.openpgp.org --send-keys 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2
+```shellsession
+> gpg --keyserver hkps://keys.openpgp.org --send-keys 6D5497B80A0F26FDCED00EFCF95DD10B4BFF68A2
 ```
 
 ## 吊销 GPG 密钥
@@ -583,7 +589,7 @@ gpg --keyserver hkps://keys.openpgp.org --send-keys 6D5497B80A0F26FDCED00EFCF95D
 1. 使用主私钥吊销密钥:
 
    ```sh
-   gpg --edit-key <KEY_ID>
+   gpg --edit-key <key-id>
    ```
 
    在交互式界面中按前面所述选中需要吊销的子密钥, 输入 `revkey` 吊销; 不选中任何子密钥时即吊销主密钥.
@@ -602,19 +608,19 @@ gpg --keyserver hkps://keys.openpgp.org --send-keys 6D5497B80A0F26FDCED00EFCF95D
 
 下面是一个简单例子说明如何使用 GPG 签名 Git commit.
 
-```sh
-export GPG_TTY=$(tty)
-cd /tmp
-git init ./test-gpg
-cd test-gpg
-echo "Hello, GPG!" > README.md
-git add *
-git commit -S29774A85FD26125D -m "Initial commit with GPG signature"
+```shellsession
+> export GPG_TTY=$(tty)
+> cd /tmp
+> git init ./test-gpg
+> cd test-gpg
+> echo "Hello, GPG!" > README.md
+> git add *
+> git commit -S29774A85FD26125D -m "Initial commit with GPG signature"
 ```
 
 输入 GPG 密钥密码后, 即可完成签名提交:
 
-```sh
+```shellsession
 > git log --show-signature
 commit 745048eeb6e87f27d5e5a8aa1f6e33f3543b8942 (HEAD -> main)
 gpg: Signature made Mon Feb  2 17:09:22 2026 CST
@@ -663,7 +669,7 @@ signingkey = 29774A85FD26125D
 
 如果 GPG 密钥的电子邮件和当前用户一致电子邮件不匹配, 则会要求执行一次签名确认:
 
-```sh
+```shellsession
 > echo "[REDACTED]" | gpg -a --default-key F95DD10B4BFF68A2 --detach-sig
 gpg: using "F95DD10B4BFF68A2" as default secret key for signing
 -----BEGIN PGP SIGNATURE-----
@@ -708,7 +714,7 @@ gpg --output <decrypted-file> --decrypt <encrypted-file>
 
 一个例子:
 
-```sh
+```shellsession
 > cd /tmp
 > echo "Hello, GPG file encryption" > secret.test
 > gpg --output secret.test.gpg --encrypt --recipient AE4E4336187491D9 secret.test
@@ -736,7 +742,7 @@ gpg [-u <your-key-id>] --verify <sig-file> <file-to-be-verified>
 
 一个例子:
 
-```sh
+```shellsession
 > cd /tmp
 > echo "Hello, GPG signing" > signing.test
 > gpg --armor -u 29774A85FD26125D --output signing.test.sig --detach-sign signing.test
@@ -748,7 +754,7 @@ gpg: Good signature from "Hantong Chen (2026) <public-service@7rs.net>" [ultimat
 
 这是相当常见的用途, 例如 Debian 软件包管理系统就使用 GPG 对软件包进行签名, 在早期 HTTPS 并不成熟时用以保证软件包在网络传输时不被篡改:
 
-```sh
+```shellsession
 > cat /etc/apt/sources.list.d/debian.sources
 Types: deb deb-src
 URIs: http://deb.debian.org/debian
