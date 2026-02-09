@@ -185,7 +185,7 @@ Podman 提供多种网络模式:
 
 1. `pasta[:OPTIONS,…]`
 
-   rootless Podman 默认, 创建一个新的网络命名空间, 使用 `pasta` 创建用户态网络堆栈.
+   Rootless Podman 默认, 创建一个新的网络命名空间, 使用 `pasta` 创建用户态网络堆栈.
 
 其他模式此处暂不展开, 如有需要参考官方文档.
 
@@ -270,7 +270,7 @@ Mastodon:  @Podman_io@fosstodon.org
 
    1. `storage.conf`
 
-      在 rootless Podman 中, `/etc/containers/storage.conf` 中的某些字段将被忽略:
+      在 Rootless Podman 中, `/etc/containers/storage.conf` 中的某些字段将被忽略:
 
       ```ini
       graphroot=""
@@ -282,7 +282,7 @@ Mastodon:  @Podman_io@fosstodon.org
        Default directory to store all temporary writable content created by container storage programs.
       ```
 
-      在 rootless Podman 中, 这些字段默认为:
+      在 Rootless Podman 中, 这些字段默认为:
 
       ```ini
       graphroot="${XDG_DATA_HOME}/containers/storage"
@@ -709,30 +709,32 @@ ghcr.io/han-rs/container-ci-cloudflared   latest      a4bbf0388c6b  2 days ago  
 1. 笔者本人在部署过程中遇到 `network-online.target` 始终没有 active (`systemctl is-active network-online.target` 提示 inactive) 的问题, 导致:
 
    1. 容器自动启动会延滞于服务器启动完成很久之后;
-   1. 启动或重启服务等待很久 (默认 90s 超时), 但成功;
+   1. 启动或重启服务等待很久 (默认 90s 超时), 但能成功;
    1. ...
 
-   根本原因暂未清楚, 或许是 `netplan` + `systemd-networkd` 的问题?
+   根本原因暂未清楚, 或许是 `netplan` + `systemd-networkd` 的问题? 等待进一步研究.
 
-需要注意的是, 从 Podman v5 开始, `podman generate systemd` 已经被弃用, 不再推荐使用.
+其他需要注意的是, 从 Podman v5 开始, `podman generate systemd` 已经被弃用, 不再推荐使用.
 
 ## 结语
 
-总的来说, 如果不想折腾, 直接使用 rootful Docker 确实方便, root 解决一切权限问题, 但面对[飞牛变肥牛](https://linux.do/t/topic/1548846)之类的教训, 还是建议使用 rootless Podman, 也就繁琐一点, 问题并不大.
+总的来说, 如果不想折腾, 直接使用 rootful Docker 确实方便, root 解决一切权限问题, 但面对 ["飞牛变肥牛"](https://linux.do/t/topic/1548846) 之类由于厂商漠视安全、产品存在大量安全漏洞不积极修复放任被在野攻击者利用的教训, 对于闭源应用或未得到广泛安全审计的开源应用, 还是建议使用 Rootless Podman 容器化隔离, 并配置 CPU 和内存用量限制; 即便是开源应用, 也建议使用 Rootless Podman 来隔离部署, 以防止由于配置错误或未知漏洞导致的安全问题.
 
-本文是在笔者个人存储服务器通过 rootless Podman 隔离部署应用程序, 尤其是闭源应用程序的过程中总结的经验, 相关成果也开源在以下仓库中, 欢迎参考、批评指正:
+本文是笔者近日在个人存储服务器使用 Rootless Podman 隔离部署应用程序, 尤其是闭源应用程序的过程中总结的经验 (踩坑体验), 分享在此供读者参考, 相关成果开源在以下仓库中:
 
 1. [container-ci-freenginx](https://github.com/han-rs/container-ci-freenginx)
 1. [container-ci-qbittorrent](https://github.com/han-rs/container-ci-qbittorrent)
 1. [container-ci-cloudflared](https://github.com/han-rs/container-ci-cloudflared)
 1. [container-ci-resilio-sync](https://github.com/han-rs/container-ci-resilio-sync)
 
+由于笔者水平和精力有限, 文章中难免出现纰漏, 欢迎评论区批评指正、交流分享.
+
 ## 参考文献
 
 1. 官方文档, 包括但不限于:
 
-   1. 官方 rootless Podman 指引: <https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md>
-   1. 官方 rootless Podman 常见问题总结: <https://github.com/containers/podman/blob/main/rootless.md>
+   1. 官方指引: <https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md>
+   1. 官方常见问题总结: <https://github.com/containers/podman/blob/main/rootless.md>
    1. 用户命名空间模式: <https://docs.podman.io/en/latest/markdown/podman-run.1.html#userns-mode>
 1. [How does rootless Podman work?](https://opensource.com/article/19/2/how-does-rootless-podman-work)
 1. [探索 Linux Namespace: Docker 隔离的神奇背后](https://www.lixueduan.com/posts/docker/05-namespace/)
