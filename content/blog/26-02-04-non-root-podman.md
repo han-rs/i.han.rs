@@ -207,7 +207,7 @@ Podman 提供多种网络模式:
    unqualified-search-registries = ["docker.io"]
    ```
 
-## 运行 rootless Podman 容器
+## 运行 Rootless Podman 容器
 
 完成上述配置后, 即可以非 root 用户运行 Podman 容器. 测试如下:
 
@@ -489,7 +489,7 @@ Mastodon:  @Podman_io@fosstodon.org
 
    在容器化现有应用程序时时, 需要注意两者的差异; 对终端用户来说没有什么直接影响, 但建议启动容器时配置 `--security-opt=no-new-privileges` 以禁止容器进程获得额外权限, 或者直接禁用所有 Capabilities (`--cap-drop=all`) 再按需添加 (`--cap-add=CAP_NAME`), 防止类似 `CAP_BPF` 这些后面才引入的高危 Capabilities 被意外添加.
 
-## 编写 rootless 友好的 Dockerfile
+## 编写 Rootless 友好的 Dockerfile
 
 总体和编写普通 Dockerfile 没什么区别, 但需要注意以下几点:
 
@@ -592,7 +592,7 @@ Mastodon:  @Podman_io@fosstodon.org
 
       (笔者评: 还是喜欢 Rustls + WebPKI, OpenSSL 这种岁月痕迹过于重的库, 唉...)
 
-## 使用 systemd 管理 rootless Podman 容器
+## 使用 systemd 管理 Rootless Podman 容器
 
 参考文档: <https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html>
 
