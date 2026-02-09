@@ -2,7 +2,7 @@
 title = "了解和使用 Rootless Podman"
 date = "2026-02-04"
 updated = "2026-02-09"
-description = "本文是笔者近日在个人存储服务器通过 rootless Podman 隔离部署应用程序, 尤其是闭源应用程序的过程中总结的经验分享 (踩坑体验), 供读者参考."
+description = "本文是笔者近日在个人存储服务器使用 Rootless Podman 隔离部署应用程序, 尤其是闭源应用程序的过程中总结的经验 (踩坑体验), 分享在此供读者参考."
 
 [taxonomies]
 tags = ["Podman"]
@@ -17,13 +17,15 @@ tldr = """
 
 我们需要意识到:
 
-1. 日常使用 root 用户本来就存在极大安全隐患;
-1. Docker 的守护程序设计, 导致 Docker 并不能真正实现 rootless, rootless Docker 的配置也是极其麻烦;
-1. 在容器中运行的进程与在宿主上直接运行的其他进程没有什么不同. 部分镜像遵循最优实践, 以自定义用户启动程序, 安全性尚可; 但部分镜像直接以容器内的 root 用户启动进程, 如果在使用该镜像时没有指定用户或配置用户映射, 则近似等价于以宿主机的 root 用户启动了程序; 如果还指定了 `--privileged`, 安全性直接归零...
+1. 日常使用 "root" 本来就存在极大安全隐患.
+1. Docker 的守护程序设计, 导致 Docker 并不能真正实现 Rootless, Docker Rootless 的配置也是极其麻烦.
+1. 在容器中运行的进程与在宿主上直接运行的其他进程没有什么不同. 部分镜像遵循最优实践, 以自定义用户启动程序, 安全性尚可; 但部分镜像直接以容器内的 "root" 启动进程, 如果在使用该镜像时没有指定用户或配置用户映射, 则近似等价于以宿主机的 "root" 启动了程序; 如果还指定了 `--privileged`, 安全性直接归零.
 
-Podman 由于其无守护程序设计, 天然支持 rootless 模式, 逐渐走进了用户的视野.
+Podman 由于其无守护程序设计, 天然支持 Rootless 模式.
 
 ## 安装 Podman
+
+参考官方文档 <https://podman.io/docs/installation>.
 
 在 Debian 13 中, 直接通过 apt 安装即可:
 
@@ -36,19 +38,21 @@ sudo apt install podman
 
 需要注意, 截止至本文写作时, 虽然 Podman 的最新 stable 版本是 5.7.1, 但 Debian 13 官方软件包提供的 Podman 的版本是 5.4.2, 本文所有例子均基于 5.4.2 测试.
 
-## rootless Podman 基本概念
+## Rootless Podman 基本概念
+
+在正式开始使用 Podman 前, 我们需要了解一些基本概念.
 
 ### 命名空间 (Namespace)
 
-命名空间是 Linux 提供的一种内核级别环境隔离的机制, 容器化技术重度使用了命名空间机制来实现容器的隔离. 关于命名空间的详细介绍此处不再赘述, 读者可以阅读文末的参考文献, 此处仅介绍我们最常打交道的, 也是给普通用户带来最多疑问的用户命名空间和网络命名空间.
+命名空间是 Linux 提供的一种内核级别环境隔离的机制, 容器化技术重度使用了命名空间机制来实现容器的隔离. 关于命名空间的详细内容此处不再赘述, 读者可以阅读文末的参考文献, 此处仅介绍我们最常打交道的, 也是给普通用户带来最多 "问题" 的用户命名空间和网络命名空间.
 
 #### 用户命名空间
 
 不严谨地说, 用户命名空间提供了一种使容器内用户能够映射到宿主机上的(通常是非特权的)用户的机制, 而容器中的 "root" 仅在容器的用户命名空间内具有 "完全" 的权限, 对容器的用户命名空间外的资源的操作权限则被限制为 "映射" 到的 "普通用户" 的操作权限, 正如官方文档所言: "Rootless Podman is not, and will never be, root".
 
-默认情况下, 通过 rootless Podman 运行容器时, 容器内的 "root" (UID=0, GID=0) 会被映射为运行容器的用户的 UID (GID), 其他 UID (GID) 则映射至宿主机上的高位 UID (GID), 这些高位 UID (GID) 往往并没有对应的宿主机用户(组), 权限则按照 "Others" 处理, 例如, 无法访问权限配置为 `drwxrwx---` (770) 的宿主机文件. 具体的映射规则参见后文. 当然, 也可以选择不映射, 此时容器用户命名空间的 UID 拥有的任何文件对象则将被视为由 "nobody" (65534, `kernel.overflowuid`) 拥有.
+默认情况下, 通过 Rootless Podman 运行容器时, 容器内的 "root" (UID=0, GID=0) 会被映射为运行容器的用户, 其他 UID (GID) 则映射至宿主机上的高位 UID (GID), 这些高位 UID (GID) 往往并没有对应的宿主机用户(组), 则文件权限按照 "Others" 处理, 拥有的任何文件对象将被视为由 "nobody" (65534, `kernel.overflowuid`) 拥有.
 
-可以通过 [`podman-unshare`] 工具创建并进入一新用户命名空间, 以便捷地验证上述映射关系 (值得一提, 在调试 rootless Podman 的权限问题时我们会经常和这个工具打交道). 如:
+可以通过 [`podman-unshare`](https://docs.podman.io/en/latest/markdown/podman-unshare.1.html) 工具创建并进入一新用户命名空间, 以便捷地验证上述映射关系 (值得一提, 在调试 Rootless Podman 的权限问题时我们会经常和这个工具打交道). 如:
 
 ```shellsession
 > id
@@ -93,19 +97,15 @@ hantong:100000:65536
 3432 -rw-r--r-- 1 1000 1000 0 Feb  8 21:54 /tmp/test
 ```
 
-如果不幸地, 你的容器进程通过某些安全漏洞逃逸了容器, 那么它也只能以映射到的高位 UID (GID) 的权限 (或者 "nobody" 的权限) 在宿主机上运行, 这大大降低了容器逃逸后的危害.
+如果不幸地, 你的容器进程通过某些安全漏洞逃逸了容器, 那么它也只能以映射到的高位 UID (GID) 的权限 (或者说, "nobody" 的权限) 在宿主机上运行, 这大大降低了容器逃逸后的危害.
 
 #### 网络命名空间
 
 (TBD.)
 
-网络命名空间负责提供容器内网络与宿主机网络乃至其他容器网络的隔离.
+网络命名空间负责提供容器内网络与宿主机网络以及其他容器网络的隔离. 默认情况下, 各个容器有其独立的网络命名空间, 而不在同一网络命名空间中的进程无法直接通信.
 
-Host 网络模式 (`--network=host`) 在 rootless Podman 中也可用, 此时容器完全复用主机网络命名空间, 牺牲一定安全性换取网络性能; 否则, 各个容器有其独立的网络命名空间, 不在同一网络命名空间中的进程无法直接通信.
-
-Docker 和旧版本 Podman 使用 `slirp4netns` 用户态网络驱动来实现 rootless 网络, 性能较差; Podman v5 以后, 默认使用 "性能更优" 的 `pasta` 代替 `slirp4netns`.
-
-相对于 `slirp4netns`, `pasta` 的特点:
+Docker Rootless 和旧版本 Podman 使用 `slirp4netns` 用户态网络驱动来实现 Rootless 网络, 性能较差; Podman v5 以后, 默认使用 "性能更优" 的 `pasta` 代替 `slirp4netns`. 相对于 `slirp4netns`, `pasta` 的特点:
 
 1. `pasta` 支持 IPv6;
 1. `pasta` 使用主机中的接口名称, 从主机复制 IP 地址并使用主机中的网关地址.
@@ -115,54 +115,40 @@ Docker 和旧版本 Podman 使用 `slirp4netns` 用户态网络驱动来实现 r
 ```shellscript
 > podman unshare --rootless-netns ip addr
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-    inet 127.0.0.1/8 scope host lo
-       valid_lft forever preferred_lft forever
-    inet6 ::1/128 scope host proto kernel_lo 
-       valid_lft forever preferred_lft forever
+# ...
 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 65520 qdisc fq state UNKNOWN group default qlen 1000
     link/ether 52:3a:d5:14:43:4c brd ff:ff:ff:ff:ff:ff
     inet 192.168.1.200/24 brd 192.168.1.255 scope global eth0
        valid_lft forever preferred_lft forever
-    inet 192.168.1.25/24 metric 100 brd 192.168.1.255 scope global secondary eth0
-       valid_lft forever preferred_lft forever
-    inet6 [REDACTED]/64 scope global nodad mngtmpaddr noprefixroute 
-       valid_lft forever preferred_lft forever
-    inet6 [REDACTED]/64 scope global nodad 
-       valid_lft forever preferred_lft forever
-    inet6 fe80::503a:d5ff:fe14:434c/64 scope link nodad tentative proto kernel_ll 
-       valid_lft forever preferred_lft forever
+# ...
 > podman unshare ip addr
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-    inet 127.0.0.1/8 scope host lo
-       valid_lft forever preferred_lft forever
-    inet6 ::1/128 scope host noprefixroute 
-       valid_lft forever preferred_lft forever
+# ...
 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq state UP group default qlen 1000
     link/ether bc:24:11:46:30:a6 brd ff:ff:ff:ff:ff:ff
     altname enp6s18
     altname enxbc24114630a6
     inet 192.168.1.200/24 brd 192.168.1.255 scope global eth0
        valid_lft forever preferred_lft forever
-    inet 192.168.1.25/24 metric 100 brd 192.168.1.255 scope global secondary dynamic eth0
-       valid_lft 512686sec preferred_lft 512686sec
-    inet6 [REDACTED]/64 scope global temporary dynamic 
-       valid_lft 534478sec preferred_lft 3195sec
-    inet6 [REDACTED]/64 scope global temporary deprecated dynamic 
-       valid_lft 448111sec preferred_lft 0sec
-  # ...
-       valid_lft 1209195sec preferred_lft 3195sec
-    inet6 fe80::be24:11ff:fe46:30a6/64 scope link proto kernel_ll 
-       valid_lft forever preferred_lft forever
+# ...
 3: lan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq state UP group default qlen 1000
     link/ether bc:24:11:40:61:e6 brd ff:ff:ff:ff:ff:ff
     altname enp6s19
     altname enxbc24114061e6
     inet 172.16.0.2/24 brd 172.16.0.255 scope global lan0
        valid_lft forever preferred_lft forever
-    inet6 fe80::be24:11ff:fe40:61e6/64 scope link proto kernel_ll 
-       valid_lft forever preferred_lft forever
+# ...
+```
+
+```shellscript
+> curl http://127.0.0.1:1111/ -I
+HTTP/1.1 200 OK
+content-type: text/html
+content-length: 12252
+date: Mon, 09 Feb 2026 05:11:24 GMT
+
+> podman unshare --rootless-netns curl http://127.0.0.1:1111/ -I
+curl: (7) Failed to connect to 127.0.0.1 port 1111 after 0 ms: Could not connect to server
 ```
 
 ### 存储驱动
@@ -175,11 +161,13 @@ Docker 和旧版本 Podman 使用 `slirp4netns` 用户态网络驱动来实现 r
 
 (TBD.)
 
-Podman 提供多种网络模式, 参考文档 <https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net>:
+参考文档 <https://docs.podman.io/en/latest/markdown/podman-run.1.html#network-mode-net>
+
+Podman 提供多种网络模式:
 
 1. `bridge` (桥接).
 
-   rootful Podman 默认, 直接桥接到主机网络接口.
+   Rootful Podman 默认, 直接桥接到主机网络接口.
 
 1. `none`
 
@@ -189,7 +177,7 @@ Podman 提供多种网络模式, 参考文档 <https://docs.podman.io/en/latest/
 
    加入另一个容器的网络命名空间.
 
-   (注: 笔者更推荐使用 Pod 管理需要通过网络相互访问的容器.)
+   (笔者注: 更推荐使用 Pod 管理需要通过网络相互访问的容器.)
 
 1. `host`
 
@@ -246,7 +234,7 @@ X/Twitter: @Podman_io
 Mastodon:  @Podman_io@fosstodon.org
 ```
 
-当然, rootless Podman 的配置和使用有许多和 rootful Docker 不同的地方, 下面不完整地列举一些.
+当然, Rootless Podman 的配置和使用由于命名空间等问题有和 Docker 不同的地方, 下面不完整地列举一些.
 
 1. 需要配置 `/etc/subuid` 和 `/etc/subgid` 文件.
 
@@ -260,7 +248,7 @@ Mastodon:  @Podman_io@fosstodon.org
 
 1. 需要解除 Linux 对非 root 用户绑定 1024 以下端口的限制.
 
-   可以通过以下命令解除该限制:
+   如果需要绑定如 80 / 443 端口的话, 可以通过以下命令解除该限制:
 
    ```sh
    sudo sysctl -w net.ipv4.ip_unprivileged_port_start=0
@@ -311,13 +299,11 @@ Mastodon:  @Podman_io@fosstodon.org
 
       `podman login` 和 `podman logout` 命令使用的默认授权文件是 `${XDG_RUNTIME_DIR}/containers/auth.json`.
 
-1. 用户命名空间相关的大量问题.
+1. 命名空间隔离带来的问题.
 
-   这个应该是 rootless Podman 最让人头疼的地方了.
+   Rootless Podman 在执行用户命名空间隔离时提供了以下模式, 需要我们了解:
 
-   Podman 提供了以下用户命名空间模式, 需要我们了解:
-
-   1. `host` (默认): 创建用户命名空间, 容器中的根用户(组)映射为运行容器时的用户(组), 其余 UID (GID) 按照前述映射规则依次映射为宿主机高位 UID (GID).
+   1. `host` (默认): 映射当前用户的 UID (GID) 到容器内的 "root" (UID=0, GID=0), 其余 UID (GID) 按照前述映射规则依次映射为宿主机高位 UID (GID).
 
       ```shellsession
       > podman run -it --rm --userns=host --name="test" --replace debian:trixie-slim bash
@@ -345,7 +331,7 @@ Mastodon:  @Podman_io@fosstodon.org
       21384 100999   100999   100999 100999 sleep 3000
       ```
 
-   1. `keep-id`: 类似 `host`, 但是映射当前用户的 UID (GID) 到容器内的相同 UID (GID). 同时, 忽视镜像的 `USER` 配置, 在当前用户的 UID 下运行 init 进程, 除非手动指定用户.
+   1. `keep-id`: 类似 `host`, 但是映射当前用户的 UID (GID) 到容器内的相同 UID (GID). 同时, 除非手动指定用户, 忽视镜像的 `USER` 配置, 在当前用户的 UID 下运行 init 进程.
 
       ```shellsession
       > podman run -it --rm --userns=keep-id --name="test" --replace debian:trixie-slim bash
@@ -357,7 +343,7 @@ Mastodon:  @Podman_io@fosstodon.org
       uid=1000(hantong) gid=1000(hantong) groups=1000(hantong),27(sudo)
       ```
 
-   1. "nomap": 创建用户命名空间, 但不映射当前用户, 容器内的所有 UID (GID) 按照前述映射规则依次映射为宿主机高位 UID (GID).
+   1. "nomap": 不映射宿主机用户, 容器内的所有 UID (GID) 按照前述映射规则依次映射为宿主机高位 UID (GID).
 
       ```shellsession
       > podman run -it --rm --userns=nomap --name="test" --replace debian:trixie-slim bash
@@ -383,17 +369,19 @@ Mastodon:  @Podman_io@fosstodon.org
       28563 101000   101000   101000 101000 sleep 3000
       ```
 
-   很多时候, 我们需要将宿主机的某个目录挂载到容器内, 使用 rootful Docker 外加关掉 (或者说根本没开启) SELinux 自然可以忽视 (~~暴力解决~~) 权限问题, 但 rootless Podman 就不行了.
+   很多时候, 我们需要将宿主机的某个目录挂载到容器内, 使用 Docker 外加关掉 (或者说根本没开启) SELinux 自然可以靠 "root" 的力量忽视 (~~暴力解决~~) 权限问题, 但 Rootless Podman 就不行了.
 
-   1. 当镜像没有配置 `USER`:
+   两种情况:
 
-      此时, 默认以容器内的 "root" (UID=0, GID=0) 运行. 容器内的 "root" 在 rootless Podman 默认的用户命名空间模式 ("--userns=host") 下如前所述被映射到宿主机下运行容器的当前用户, 文件系统权限表现和当前用户**基本**一致.
+   1. 镜像没有配置 `USER`:
+
+      此时, 默认以容器内的 "root" (UID=0, GID=0) 运行. 容器内的 "root" 在 Rootless Podman 默认的用户命名空间模式 ("--userns=host") 下如前所述被映射到宿主机下运行容器的当前用户, 文件系统权限表现和当前用户**基本**一致.
 
    1. 当镜像遵循最佳实践配置了 (rootless) `USER=UID[:GID]`:
 
-      此时, 容器内进程以容器内的该 UID (GID) 运行, 而容器内 UID (GID) 在 rootless Podman 默认的用户命名空间模式 ("--userns=host") 下如前所述被映射到宿主机下的高位 UID (GID), 此时文件系统权限表现和宿主机上的 "其他用户" 一样了.
+      此时, 容器内进程以容器内的该 UID (GID) 运行, 而容器内 UID (GID) 在 Rootless Podman 默认的用户命名空间模式 ("--userns=host") 下如前所述被映射到宿主机下的高位 UID (GID), 此时文件系统权限表现和宿主机上的 "Others" 一样了.
 
-   这里有一个实例:
+   实例:
 
    ```shellsession
    > podman run -d --restart=unless-stopped -v /home/hantong/.config/openlist:/opt/openlist/data -p 5244:5244 --name="openlist" --replace openlistteam/openlist:latest
@@ -417,9 +405,7 @@ Mastodon:  @Podman_io@fosstodon.org
    CMD [ "/entrypoint.sh" ]
    ```
 
-   在这个案例中, "/entrypoint.sh" 是以容器内的 UID=1001 GID=1001 运行的, 被映射到宿主机下的 UID=101000 GID=101000. 显然其无法访问权限为 600, 归属 UID=1000 GID=1000 的的宿主机目录 `/home/hantong`.
-
-   此时, 可以配置 Podman 的用户命名空间模式为 "keep-id", 以确保 init 进程 "实质" 以当前用户的 UID (GID) 运行, 从而对 `/home/hantong` 目录具有访问权限, 如:
+   在这个案例中, "/entrypoint.sh" 是以容器内的 UID=1001、GID=1001 运行的, 被映射到宿主机下的 UID=101000、GID=101000. 显然, 其无法访问权限为 600, 归属 UID=1000、GID=1000 的的宿主机目录 `/home/hantong`. 此时, 我们可以配置 Podman 的用户命名空间模式为 "keep-id", 以使 init 进程 "以当前用户的 UID (GID) 运行", 从而对 `/home/hantong` 目录具有访问权限, 如:
 
    ```shellsession
    > podman run -d --userns=keep-id --restart=unless-stopped -v /home/hantong/.config/openlist:/opt/openlist/data -p 5244:5244 --name="openlist" --replace openlistteam/openlist:latest
@@ -459,7 +445,7 @@ Mastodon:  @Podman_io@fosstodon.org
    drwxr-xr-x  2 101000 101000   4096 Jan 31 16:28 temp
    ```
 
-   为了避免编辑配置文件还得 `sudo` 的麻烦, 建议配置为 `--userns=keep-id:uid=${UID},gid=${GID}`, 其中 UID, GID 为构建镜像时所配置的用户的数字 ID, 或者直接强制指定用户, 如:
+   为了避免编辑配置文件还得 `sudo` 的麻烦, 建议配置为 `--userns=keep-id:uid=${UID},gid=${GID}`, 其中 UID, GID 为构建镜像时所配置的用户的数字 ID (或者直接指定用户覆盖镜像设置), 如:
 
    ```shellsession
    > podman run -d --userns=keep-id:uid=1001,gid=1001 --restart=unless-stopped -v /home/hantong/.config/openlist:/opt/openlist/data -p 5244:5244 --name="openlist" --replace openlistteam/openlist:latest
@@ -476,11 +462,11 @@ Mastodon:  @Podman_io@fosstodon.org
    drwxr-xr-x  2 1000 1000   4096 Feb  8 16:13 temp
    ```
 
-   这个时候, 容器内的 init 进程和非 init 进程均 "本质" 以当前用户的 UID (GID) "降权" 运行, 文件系统权限表现和当前用户基本一致.
+   这个时候, 容器内的 init 进程和非 init 进程在宿主机上均(表现为)以当前用户 "降权" 运行, 文件系统权限表现和当前用户基本一致.
 
 1. Capabilities
 
-   关于 Capabilities, 参考 <https://man7.org/linux/man-pages/man7/capabilities.7.html>, 暂且理解为对权限控制的细化.
+   关于 Capabilities, 参考 <https://man7.org/linux/man-pages/man7/capabilities.7.html>, 暂且理解为对权限控制的细化. 无论是 Docker 还是 Podman, 都限制了容器内进程的 Capabilities, 即便是 "root".
 
    [Podman 的默认 Capabilities](https://github.com/rhatdan/common/blob/ed2840c80e47bdadaff2c7d827111d401dff282d/pkg/config/containers.conf#L48-L60) 和 [Docker 的默认 Capabilities](https://github.com/moby/moby/blob/docker-29.x/daemon/pkg/oci/caps/defaults.go) 是不同的:
 
@@ -538,11 +524,9 @@ Mastodon:  @Podman_io@fosstodon.org
 
          一般来说, 能编译为 `x86_64-unknown-linux-gnu` 就能编译为 `x86_64-unknown-linux-musl`, 除非依赖到某些奇奇怪怪的 C 库.
 
-       需要注意的是, 如果应用程序依赖于 glibc, 则无法直接使用 `scratch` 镜像, 因为 `scratch` 是一个完全空白的镜像, 不包含任何库文件. 此时, 可以使用 `gcr.io/distroless/base` 镜像, 它包含了 glibc 和一些基本的系统工具, 适合运行依赖 glibc 的应用程序.
-
       1. ...
 
-   1. 如果应用程序依赖于 glibc, 可以使用 `gcr.io/distroless/base-nossl`; 如果应用程序还依赖于 OpenSSL, 可以使用 `gcr.io/distroless/base`.
+   1. 如果应用程序依赖于 glibc, 可以使用 `gcr.io/distroless/base-nossl`; 如果应用程序还依赖于 OpenSSL (v3.X), 可以使用 `gcr.io/distroless/base`.
 
    一些问题:
 
@@ -550,7 +534,7 @@ Mastodon:  @Podman_io@fosstodon.org
 
       此即缺失依赖库问题.
 
-      这种情况下, 使用 ldd 查看依赖库, 再直接参考相关库的安装方法从完整镜像复制文件即可, 如[笔者在打包 Resilio Sync 时的做法](https://github.com/han-rs/container-ci-resilio-sync/blob/main/Dockerfile):
+      这种情况下, 使用 ldd 查看依赖库, 再参考相关库的安装方法直接从完整镜像复制文件即可, 如笔者在打包 Resilio Sync 时的做法:
 
       ```dockerfile
       # ...
@@ -578,13 +562,13 @@ Mastodon:  @Podman_io@fosstodon.org
       # ...
       ```
 
-      (笔者评: Resilio Sync 怎么还在用 OpenSSL 1.1 啊, 硬要用就不能静态编译进程序里面么... C / C++ 的依赖灾难在这就体现了...)
+      (笔者评: Resilio Sync 怎么还在用 OpenSSL 1.1.X 啊, 硬要用就不能静态编译进程序里面么... C / C++ 的依赖灾难在这就体现了...)
 
    1. OpenSSL CA 问题.
 
       但凡最终应用程序报告 SSL 相关错误, 大抵是这里所述的问题.
 
-      这种情况下, 可以在构建阶段安装 ca-certificates 包, 将 CA 文件复制到最终镜像中, 并正确配置环境变量, 如[笔者在打包 qBittorrent 时的做法](https://github.com/han-rs/container-ci-qbittorrent/blob/main/Dockerfile):
+      这种情况下, 可以在构建阶段安装 ca-certificates 包, 将 CA 文件复制到最终镜像中, 并正确配置环境变量, 如笔者在打包 qBittorrent 时的做法:
 
       ```dockerfile
       # ...
@@ -610,7 +594,9 @@ Mastodon:  @Podman_io@fosstodon.org
 
 ## 使用 systemd 管理 rootless Podman 容器
 
-Podman 不像 Docker 那样有守护程序, 需要以其他方式管理容器的自动启动等. Podman 提供了 [Quadlet], 以通过 systemd 来管理 Podman 容器.
+参考文档: <https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html>
+
+Podman 不像 Docker 那样有守护程序, 需要以其他方式管理容器的自动启动等. Podman 提供了 Quadlet, 以通过 systemd 来管理 Podman 容器.
 
 下面是一个示例 Quadlet 文件:
 
@@ -736,10 +722,10 @@ ghcr.io/han-rs/container-ci-cloudflared   latest      a4bbf0388c6b  2 days ago  
 
 本文是在笔者个人存储服务器通过 rootless Podman 隔离部署应用程序, 尤其是闭源应用程序的过程中总结的经验, 相关成果也开源在以下仓库中, 欢迎参考、批评指正:
 
-1. [ghcr.io/han-rs/container-ci-freenginx](https://github.com/han-rs/container-ci-freenginx);
-1. [ghcr.io/han-rs/container-ci-qbittorrent](https://github.com/han-rs/container-ci-qbittorrent);
-1. [ghcr.io/han-rs/container-ci-cloudflared](https://github.com/han-rs/container-ci-cloudflared);
-1. [ghcr.io/han-rs/container-ci-resilio-sync](https://github.com/han-rs/container-ci-resilio-sync).
+1. [container-ci-freenginx](https://github.com/han-rs/container-ci-freenginx)
+1. [container-ci-qbittorrent](https://github.com/han-rs/container-ci-qbittorrent)
+1. [container-ci-cloudflared](https://github.com/han-rs/container-ci-cloudflared)
+1. [container-ci-resilio-sync](https://github.com/han-rs/container-ci-resilio-sync)
 
 ## 参考文献
 
@@ -750,6 +736,3 @@ ghcr.io/han-rs/container-ci-cloudflared   latest      a4bbf0388c6b  2 days ago  
    1. 用户命名空间模式: <https://docs.podman.io/en/latest/markdown/podman-run.1.html#userns-mode>
 1. [How does rootless Podman work?](https://opensource.com/article/19/2/how-does-rootless-podman-work)
 1. [探索 Linux Namespace: Docker 隔离的神奇背后](https://www.lixueduan.com/posts/docker/05-namespace/)
-
-[`podman-unshare`]: https://docs.podman.io/en/latest/markdown/podman-unshare.1.html
-[Quadlet]: https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html
