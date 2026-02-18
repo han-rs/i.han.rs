@@ -714,7 +714,28 @@ ghcr.io/han-rs/container-ci-cloudflared   latest      a4bbf0388c6b  2 days ago  
    1. 启动或重启服务等待很久 (默认 90s 超时), 但能成功;
    1. ...
 
-   根本原因暂未清楚, 或许是 `netplan` + `systemd-networkd` 的问题? 等待进一步研究.
+   ~~根本原因暂未清楚, 或许是 `netplan` + `systemd-networkd` 的问题? 等待进一步研究.~~
+
+   参考 <https://github.com/containers/podman/issues/24796#issuecomment-2527822425>, 给出暂时性的解决方案:
+
+   ```shell
+   sudo sh -c "cat <<EOF > /etc/systemd/system/podman-network-online-dummy.service
+   [Unit]
+   Description=This service simply activates network-online.target
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   ExecStart=/usr/bin/echo Activating network-online.target
+
+   [Install]
+   WantedBy=multi-user.target
+   EOF"
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now podman-network-online-dummy.service
+   # Check status
+   # sudo systemctl status podman-network-online-dummy.service
+   ```
 
 其他需要注意的是, 从 Podman v5 开始, `podman generate systemd` 已经被弃用, 不再推荐使用.
 
